@@ -1,21 +1,11 @@
 import * as React from "react";
 import "./App.css";
 import * as Rx from "rxjs/Rx";
-import {
-    createEventHandler,
-    componentFromStream,
-    setObservableConfig,
-    EventHandlerOf
-} from "recompose";
+import * as Recompose from "recompose";
 import rxjsConfig from "recompose/rxjsObservableConfig";
 
-setObservableConfig(rxjsConfig);
-
-declare module "recompose" {
-    export function createEventHandlerWithConfig<T, TSubs extends Subscribable<T>>(
-        config: ObservableConfig
-    ): () => EventHandlerOf<T, TSubs>;
-}
+// Use RxJS as the Observable library
+Recompose.setObservableConfig(rxjsConfig);
 
 type SquareValueType = "X" | "O" | undefined;
 type BoardType = SquareValueType[];
@@ -96,10 +86,6 @@ interface GameViewModelOutputs {
     history$: Rx.Observable<HistoryType>;
 }
 
-function last<T>(arr: Array<T>): T | undefined {
-    return arr[arr.length - 1];
-}
-
 function nextMovePlayer(history: HistoryType) {
     return history.length % 2 === 1 ? "X" : "O";
 }
@@ -107,42 +93,44 @@ function nextMovePlayer(history: HistoryType) {
 function GameViewModel(input: GamewViewModelInputs): GameViewModelOutputs {
     const { clickSquare$, clickMove$ } = input;
 
-    let clickSquareReducer = clickSquare$.map(squareNum => (history: HistoryType): HistoryType => {
-        const board = last(history)!;
-        if (board[squareNum] || calculateWinner(board)) {
-            return history;
-        }
-        const newBoard = board.slice();
-        newBoard[squareNum] = nextMovePlayer(history);
-        return [...history, newBoard];
-    });
+    function makeClickSquareReducer(squareNum: SquareIndexType) {
+        return function(history: HistoryType): HistoryType {
+            const board = history[history.length - 1];
+            if (board[squareNum] || calculateWinner(board)) {
+                return history;
+            }
+            const newBoard = board.slice();
+            newBoard[squareNum] = nextMovePlayer(history);
+            return [...history, newBoard];
+        };
+    }
 
-    let clickMoveReducer = clickMove$.map(move => (history: HistoryType) => {
-        return history.slice(0, move + 1);
-    });
+    function makeClickMoveReducer(move: MoveIndexType) {
+        return function(history: HistoryType): HistoryType {
+            return history.slice(0, move + 1);
+        };
+    }
 
-    let emptyBoard = new Array(9).fill(undefined);
+    const clickSquareReducer = clickSquare$.map(makeClickSquareReducer);
+    const clickMoveReducer = clickMove$.map(makeClickMoveReducer);
+    const initialState = [new Array(9).fill(undefined)] as HistoryType;
+    const initialReducer = (x: HistoryType) => x;
 
-    let initialReducer = (x: HistoryType) => x;
-
-    let history$ = Rx.Observable
+    const history$ = Rx.Observable
         .merge(clickSquareReducer, clickMoveReducer)
         .startWith(initialReducer)
-        .scan((history, reducer) => reducer(history), [emptyBoard]);
+        .scan((history, reducer) => reducer(history), initialState);
 
-    return {
-        history$: history$
-    };
+    return { history$ };
 }
 
-function createHandler<T>(): EventHandlerOf<T, Rx.Subject<T>> {
-    return createEventHandler();
+function createHandler<T>(): Recompose.EventHandlerOf<T, Rx.Subject<T>> {
+    return Recompose.createEventHandler();
 }
 
-const Game = componentFromStream((props$: Rx.Observable<{}>) => {
+const Game = Recompose.componentFromStream((props$: Rx.Observable<{}>) => {
     const { handler: clickSquare, stream: clickSquare$ } = createHandler<SquareIndexType>();
     const { handler: clickMove, stream: clickMove$ } = createHandler<MoveIndexType>();
-
     const { history$ } = GameViewModel({ clickSquare$, clickMove$ });
 
     return history$.map(history => {
@@ -163,7 +151,7 @@ const Game = componentFromStream((props$: Rx.Observable<{}>) => {
         return (
             <div key="none" className="game">
                 <div className="game-board">
-                    <Board board={history[history.length - 1]} onClick={n => clickSquare(n)} />
+                    <Board board={history[history.length - 1]} onClick={clickSquare} />
                 </div>
                 <div className="game-info">
                     <div className="status">{status}</div>
