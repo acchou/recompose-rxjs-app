@@ -31,7 +31,7 @@ function deepEquals(x: {}, y: {}): boolean {
 }
 
 describe("TicTacToe view model", () => {
-    it("starts with an empty board", () => {
+    it("starts with an empty board, no winner, and player 'X' next", () => {
         const testScheduler = new Rx.TestScheduler(deepEquals);
         const clickSquare$ = testScheduler.createHotObservable<SquareIndexType>("");
         const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
@@ -49,6 +49,46 @@ describe("TicTacToe view model", () => {
         };
 
         testScheduler.expectObservable(game$).toBe("0", expected);
+        testScheduler.flush();
+    });
+
+    it("the first move is player 'X'", () => {
+        const testScheduler = new Rx.TestScheduler(deepEquals);
+
+        const clickSquare$ = testScheduler.createHotObservable<SquareIndexType>("-5");
+        const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
+
+        const game$ = GameViewModel({ clickSquare$, clickMove$ });
+
+        const emptyBoard = new Array(9).fill(undefined);
+        let firstMove = [
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            "X",
+            undefined,
+            undefined,
+            undefined
+        ];
+
+        const expected = {
+            0: {
+                currentBoard: emptyBoard,
+                history: [emptyBoard],
+                winner: undefined,
+                nextPlayer: "X"
+            },
+            1: {
+                currentBoard: firstMove,
+                history: [emptyBoard, firstMove],
+                winner: undefined,
+                nextPlayer: "O"
+            }
+        };
+
+        testScheduler.expectObservable(game$).toBe("01", expected);
         testScheduler.flush();
     });
 });
