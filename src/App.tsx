@@ -77,7 +77,7 @@ function MoveHistoryItem(props: MoveHistoryItemProps) {
     );
 }
 
-function createHandler<T>(): Recompose.EventHandlerOf<T, Rx.Subject<T>> {
+function createHandler<T>(): Recompose.EventHandlerOf<T, Rx.Observable<T>> {
     return Recompose.createEventHandler();
 }
 

@@ -6,9 +6,9 @@ export type HistoryType = BoardType[];
 export type SquareIndexType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 export type MoveIndexType = number;
 
-export interface GamewViewModelInputs {
-    clickSquare$: Rx.Subject<SquareIndexType>;
-    clickMove$: Rx.Subject<MoveIndexType>;
+export interface GameViewModelInputs {
+    clickSquare$: Rx.Observable<SquareIndexType>;
+    clickMove$: Rx.Observable<MoveIndexType>;
 }
 
 export interface GameState {
@@ -45,7 +45,7 @@ function calculateWinner(board: SquareValueType[]) {
     return undefined;
 }
 
-export function GameViewModel(input: GamewViewModelInputs): GameViewModelOutputs {
+export function GameViewModel(input: GameViewModelInputs): GameViewModelOutputs {
     const { clickSquare$, clickMove$ } = input;
 
     function makeClickSquareReducer(squareNum: SquareIndexType) {
