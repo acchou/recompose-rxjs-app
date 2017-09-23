@@ -160,11 +160,10 @@ describe("TicTacToe view model", () => {
         }
         setTimeout(input, 0);
 
-        const result = await game$.take(moves.length).toPromise();
+        const result = await game$.take(moves.length + 1).toPromise();
 
         function validate() {
             expect(result.winner).toBe("X");
-            console.log(result);
         }
         validate();
     });
