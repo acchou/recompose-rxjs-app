@@ -30,6 +30,13 @@ function deepEquals(x: {}, y: {}): boolean {
     return true;
 }
 
+function toArray<T>(obs: Rx.Observable<T>): Promise<T[]> {
+    return new Promise((resolve, reject) => {
+        const result: T[] = [];
+        obs.subscribe(value => result.push(value), error => reject(), () => resolve(result));
+    });
+}
+
 describe("TicTacToe view model", () => {
     it("starts with an empty board, no winner, and player 'X' next", () => {
         const testScheduler = new Rx.TestScheduler(deepEquals);
@@ -52,7 +59,22 @@ describe("TicTacToe view model", () => {
         testScheduler.flush();
     });
 
-    it("the first move is player 'X'", () => {
+    it("starts with an empty board", async () => {
+        const testScheduler = new Rx.TestScheduler(deepEquals);
+        const clickSquare$ = testScheduler.createHotObservable<SquareIndexType>("");
+        const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
+
+        const game$ = GameViewModel({ clickSquare$, clickMove$ });
+
+        const result = await game$
+            .take(1)
+            .toArray()
+            .toPromise();
+        const emptyBoard = new Array(9).fill(undefined);
+        expect(result[0].currentBoard).toEqual(emptyBoard);
+    });
+
+    it("places the 'X' on the first square clicked", () => {
         const testScheduler = new Rx.TestScheduler(deepEquals);
 
         const clickSquare$ = testScheduler.createHotObservable<SquareIndexType>("-5");
@@ -90,5 +112,30 @@ describe("TicTacToe view model", () => {
 
         testScheduler.expectObservable(game$).toBe("01", expected);
         testScheduler.flush();
+    });
+
+    it("places an 'X' on the first square clicked 2", async () => {
+        const testScheduler = new Rx.TestScheduler(deepEquals);
+        const clickSquare$ = testScheduler.createHotObservable<SquareIndexType>("");
+        const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
+
+        async function testFirstClick(square: SquareIndexType) {
+            const game$ = GameViewModel({ clickSquare$, clickMove$ });
+            setTimeout(() => {
+                clickSquare$.next(square);
+            }, 0);
+            const result = await game$.take(2).toPromise();
+            result.currentBoard.forEach((value, index, board) => {
+                if (square !== index) {
+                    expect(board[index]).toBeUndefined();
+                }
+            });
+            expect(result.currentBoard[square]).toEqual("X");
+        }
+
+        let idx: SquareIndexType;
+        for (idx = 0; idx < 9; idx++) {
+            await testFirstClick(idx);
+        }
     });
 });
