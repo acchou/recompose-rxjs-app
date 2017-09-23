@@ -120,22 +120,28 @@ describe("TicTacToe view model", () => {
         const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
 
         async function testFirstClick(square: SquareIndexType) {
+            function checkUnclickedSquaresAreUndefined(board: BoardType) {
+                board.forEach((value, index) => {
+                    if (square !== index) {
+                        expect(board[index]).toBeUndefined();
+                    }
+                });
+            }
+            function checkClickedSquareHasX(board: BoardType) {
+                expect(board[square]).toEqual("X");
+            }
+
             const game$ = GameViewModel({ clickSquare$, clickMove$ });
             setTimeout(() => {
                 clickSquare$.next(square);
             }, 0);
             const result = await game$.take(2).toPromise();
-            result.currentBoard.forEach((value, index, board) => {
-                if (square !== index) {
-                    expect(board[index]).toBeUndefined();
-                }
-            });
-            expect(result.currentBoard[square]).toEqual("X");
+            checkUnclickedSquaresAreUndefined(result.currentBoard);
+            checkClickedSquareHasX(result.currentBoard);
         }
 
-        let idx: SquareIndexType;
-        for (idx = 0; idx < 9; idx++) {
-            await testFirstClick(idx);
+        for (let idx = 0; idx < 9; idx++) {
+            await testFirstClick(idx as SquareIndexType);
         }
     });
 });
