@@ -33,9 +33,12 @@ function deepEquals(x: {}, y: {}): boolean {
 function setupTest() {
     const clickSquare$ = new Rx.Subject<SquareIndexType>();
     const clickMove$ = new Rx.Subject<MoveIndexType>();
+    const stop$ = new Rx.Subject<void>();
     const game$ = GameViewModel({ clickSquare$, clickMove$ });
-    return { clickSquare$, clickMove$, game$ };
+    return { clickSquare$, clickMove$, game$, stop$ };
 }
+
+const emptyBoard = new Array(9).fill(undefined);
 
 describe("TicTacToe view model", () => {
     // Test with TestScheduler
@@ -45,7 +48,6 @@ describe("TicTacToe view model", () => {
         const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
         const game$ = GameViewModel({ clickSquare$, clickMove$ });
 
-        const emptyBoard = new Array(9).fill(undefined);
         const expected = {
             0: {
                 currentBoard: emptyBoard,
@@ -63,7 +65,6 @@ describe("TicTacToe view model", () => {
     it("starts with an empty board", async () => {
         const { game$ } = setupTest();
         const result = await game$.take(1).toPromise();
-        const emptyBoard = new Array(9).fill(undefined);
         expect(result.currentBoard).toEqual(emptyBoard);
     });
 
@@ -74,7 +75,6 @@ describe("TicTacToe view model", () => {
         const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
         const game$ = GameViewModel({ clickSquare$, clickMove$ });
 
-        const emptyBoard = new Array(9).fill(undefined);
         let firstMove = emptyBoard.slice();
         firstMove[5] = "X";
 
@@ -100,16 +100,16 @@ describe("TicTacToe view model", () => {
     // Async test using toPromise and setTimeout to defer hot observable events
     // until game$ is subscribed.
     it("places an 'X' on the first square clicked 2", async () => {
-        const { clickSquare$, game$ } = setupTest();
+        const { clickSquare$, game$, stop$ } = setupTest();
 
         const square = 5;
         function input() {
             clickSquare$.next(square);
-            clickSquare$.complete();
+            stop$.next();
         }
         setTimeout(input, 0);
 
-        const result = await game$.toPromise();
+        const result = await game$.takeUntil(stop$).toPromise();
 
         function validate() {
             const board = result.currentBoard;
@@ -126,15 +126,15 @@ describe("TicTacToe view model", () => {
     // Advanced test that loops an async function call
     it("places an 'X' on the first square clicked 2", async () => {
         async function testFirstClick(square: SquareIndexType) {
-            const { clickSquare$, game$ } = setupTest();
+            const { clickSquare$, game$, stop$ } = setupTest();
 
             function input() {
                 clickSquare$.next(square);
-                clickSquare$.complete();
+                stop$.next();
             }
             setTimeout(input, 0);
 
-            const result = await game$.toPromise();
+            const result = await game$.takeUntil(stop$).toPromise();
 
             function validate() {
                 const board = result.currentBoard;
@@ -154,20 +154,36 @@ describe("TicTacToe view model", () => {
     });
 
     it("detects a winner", async () => {
-        const { clickSquare$, game$ } = setupTest();
+        const { clickSquare$, game$, stop$ } = setupTest();
 
-        const moves = [0, 3, 1, 4, 2];
         function input() {
+            const moves = [0, 3, 1, 4, 2];
             moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
-            clickSquare$.complete();
+            stop$.next();
         }
         setTimeout(input, 0);
 
-        const result = await game$.toPromise();
+        const result = await game$.takeUntil(stop$).toPromise();
 
-        function validate() {
-            expect(result.winner).toBe("X");
+        expect(result.winner).toBe("X");
+    });
+
+    it("moves back to empty board when move 0 is clicked", async () => {
+        const { clickSquare$, clickMove$, game$, stop$ } = setupTest();
+
+        function input() {
+            const moves = [0, 3, 1, 4, 2];
+            moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
+            clickMove$.next(0);
+            stop$.next();
         }
-        validate();
+        setTimeout(input, 0);
+
+        const result = await game$.takeUntil(stop$).toPromise();
+
+        expect(result.currentBoard).toEqual(emptyBoard);
+        expect(result.winner).toBeUndefined();
+        expect(result.history).toEqual([emptyBoard]);
+        expect(result.nextPlayer).toEqual("X");
     });
 });
