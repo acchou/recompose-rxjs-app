@@ -66,6 +66,7 @@ export function GameViewModel(input: GameViewModelInputs): GameViewModelOutputs 
         };
     }
 
+    const stop$ = Rx.Observable.merge(clickSquare$.last(), clickMove$.last());
     const clickSquareReducer = clickSquare$.map(makeClickSquareReducer);
     const clickMoveReducer = clickMove$.map(makeClickMoveReducer);
     const initialState = [new Array(9).fill(undefined)] as HistoryType;
@@ -74,6 +75,7 @@ export function GameViewModel(input: GameViewModelInputs): GameViewModelOutputs 
     const history$ = Rx.Observable
         .merge(clickSquareReducer, clickMoveReducer)
         .startWith(initialReducer)
+        .takeUntil(stop$)
         .scan((history, reducer) => reducer(history), initialState);
 
     const state$ = history$.map(history => {

@@ -5,12 +5,12 @@ import * as Recompose from "recompose";
 import rxjsConfig from "recompose/rxjsObservableConfig";
 import App from "./App";
 import {
-    SquareValueType,
+    //     SquareValueType,
     MoveIndexType,
-    BoardType,
+    //     BoardType,
     SquareIndexType,
-    GameViewModel,
-    GameState
+    GameViewModel
+    //    GameState
 } from "./TicTacToeViewModel";
 
 it("renders without crashing", () => {
@@ -105,10 +105,11 @@ describe("TicTacToe view model", () => {
         const square = 5;
         function input() {
             clickSquare$.next(square);
+            clickSquare$.complete();
         }
         setTimeout(input, 0);
 
-        const result = await game$.take(2).toPromise();
+        const result = await game$.toPromise();
 
         function validate() {
             const board = result.currentBoard;
@@ -129,10 +130,11 @@ describe("TicTacToe view model", () => {
 
             function input() {
                 clickSquare$.next(square);
+                clickSquare$.complete();
             }
             setTimeout(input, 0);
 
-            const result = await game$.take(2).toPromise();
+            const result = await game$.toPromise();
 
             function validate() {
                 const board = result.currentBoard;
@@ -157,10 +159,11 @@ describe("TicTacToe view model", () => {
         const moves = [0, 3, 1, 4, 2];
         function input() {
             moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
+            clickSquare$.complete();
         }
         setTimeout(input, 0);
 
-        const result = await game$.take(moves.length + 1).toPromise();
+        const result = await game$.toPromise();
 
         function validate() {
             expect(result.winner).toBe("X");
