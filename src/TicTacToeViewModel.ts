@@ -3,7 +3,7 @@ import * as Rx from "rxjs/Rx";
 export type SquareValueType = "X" | "O" | undefined;
 export type BoardType = SquareValueType[];
 export type HistoryType = BoardType[];
-export type SquareIndexType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type SquareIndexType = number;
 export type MoveIndexType = number;
 
 export interface GameViewModelInputs {

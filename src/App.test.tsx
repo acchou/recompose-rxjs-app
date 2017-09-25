@@ -161,7 +161,7 @@ describe("TicTacToe view model", () => {
 
         function input() {
             const moves = [0, 3, 1, 4, 2];
-            moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
+            moves.forEach(square => clickSquare$.next(square));
             stop$.next();
         }
         setTimeout(input, 0);
@@ -176,7 +176,7 @@ describe("TicTacToe view model", () => {
 
         function input() {
             const moves = [0, 3, 1, 4, 2];
-            moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
+            moves.forEach(square => clickSquare$.next(square));
             clickMove$.next(0);
             stop$.next();
         }
@@ -198,7 +198,7 @@ describe("TicTacToe view model", () => {
 
         function input() {
             const moves = [0, 3, 1, 4, 2];
-            moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
+            moves.forEach(square => clickSquare$.next(square));
             clickMove$.next(0);
             stop$.next();
         }
@@ -219,7 +219,7 @@ describe("TicTacToe view model", () => {
     function simulateStepForward(moves: SquareIndexType[], step: number) {
         const { clickSquare$, game$, stop$ } = setupTest();
         function input() {
-            moves.slice(0, step).forEach((square: SquareIndexType) => clickSquare$.next(square));
+            moves.slice(0, step).forEach(square => clickSquare$.next(square));
             stop$.next();
         }
         setTimeout(input, 0);
@@ -231,7 +231,7 @@ describe("TicTacToe view model", () => {
     function simulateMoveHistory(moves: SquareIndexType[], step: number) {
         const { clickSquare$, clickMove$, game$, stop$ } = setupTest();
         function input() {
-            moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
+            moves.forEach(square => clickSquare$.next(square));
             clickMove$.next(moves.length - 1);
             stop$.next();
         }
@@ -239,7 +239,7 @@ describe("TicTacToe view model", () => {
         return game$.takeUntil(stop$).toPromise();
     }
 
-    it("clicking on move history is equivalent to stepping forward to the same move", () => {
+    it("moves game state backward when a previous move is clicked", () => {
         // Validate that the game state moving forwards or backwards is equivalent at
         // each step of the move history
         function checkEquivalence(moves: SquareIndexType[]) {
@@ -251,5 +251,34 @@ describe("TicTacToe view model", () => {
         }
         checkEquivalence([0, 3, 1, 4, 2]);
         checkEquivalence([4, 5, 7, 8, 1]);
+    });
+
+    it("ignores clicks on already occupied squares", async () => {
+        function clickTwice(square: SquareIndexType) {
+            const { game$, clickSquare$, stop$ } = setupTest();
+            function input() {
+                clickSquare$.next(square);
+                clickSquare$.next(square);
+                stop$.next();
+            }
+            setTimeout(input, 0);
+            return game$.takeUntil(stop$).toPromise();
+        }
+
+        function clickOnce(square: SquareIndexType) {
+            const { game$, clickSquare$, stop$ } = setupTest();
+            function input() {
+                clickSquare$.next(square);
+                stop$.next();
+            }
+            setTimeout(input, 0);
+            return game$.takeUntil(stop$).toPromise();
+        }
+
+        Rx.Observable.range(0, 9).subscribe(async (n: SquareIndexType) => {
+            let resultClickOnce = await clickOnce(n);
+            let resultClickTwice = await clickTwice(n);
+            expect(resultClickTwice).toEqual(resultClickOnce);
+        });
     });
 });
