@@ -193,38 +193,61 @@ describe("TicTacToe view model", () => {
         validate();
     });
 
-    it("clicking on move history is equivalent to stepping forward to the same move", async () => {
-        async function checkEquivalence(moves: SquareIndexType[]) {
-            async function checkEquivalenceAtStep(step: number) {
-                function simulateGameSteppingForward() {
-                    const { clickSquare$, game$, stop$ } = setupTest();
-                    function input() {
-                        moves
-                            .slice(0, step)
-                            .forEach((square: SquareIndexType) => clickSquare$.next(square));
-                        stop$.next();
-                    }
-                    setTimeout(input, 0);
-                    return game$.takeUntil(stop$).toPromise();
-                }
+    it("moves back to empty board when move 0 is clicked", async () => {
+        const { clickSquare$, clickMove$, game$, stop$ } = setupTest();
 
-                function simulateGameClickingMoveHistory() {
-                    const { clickSquare$, clickMove$, game$, stop$ } = setupTest();
-                    function input() {
-                        moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
-                        clickMove$.next(moves.length - 1);
-                        stop$.next();
-                    }
-                    setTimeout(input, 0);
-                    return game$.takeUntil(stop$).toPromise();
-                }
+        function input() {
+            const moves = [0, 3, 1, 4, 2];
+            moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
+            clickMove$.next(0);
+            stop$.next();
+        }
+        setTimeout(input, 0);
 
-                const resultFromMoveHistory = await simulateGameClickingMoveHistory();
-                const resultSteppingForwards = await simulateGameSteppingForward();
+        const result = await game$.takeUntil(stop$).toPromise();
 
+        function validate() {
+            expect(result.currentBoard).toEqual(emptyBoard);
+            expect(result.winner).toBeUndefined();
+            expect(result.history).toEqual([emptyBoard]);
+            expect(result.nextPlayer).toBe("X");
+        }
+        validate();
+    });
+
+    // Return a promise for the game state after processing `moves` up to `step`.
+    function simulateStepForward(moves: SquareIndexType[], step: number) {
+        const { clickSquare$, game$, stop$ } = setupTest();
+        function input() {
+            moves.slice(0, step).forEach((square: SquareIndexType) => clickSquare$.next(square));
+            stop$.next();
+        }
+        setTimeout(input, 0);
+        return game$.takeUntil(stop$).toPromise();
+    }
+
+    // Return a promise for the game state after processing all of the moves, then
+    // clicking on `step` in the move history to return to that step.
+    function simulateMoveHistory(moves: SquareIndexType[], step: number) {
+        const { clickSquare$, clickMove$, game$, stop$ } = setupTest();
+        function input() {
+            moves.forEach((square: SquareIndexType) => clickSquare$.next(square));
+            clickMove$.next(moves.length - 1);
+            stop$.next();
+        }
+        setTimeout(input, 0);
+        return game$.takeUntil(stop$).toPromise();
+    }
+
+    it("clicking on move history is equivalent to stepping forward to the same move", () => {
+        // Validate that the game state moving forwards or backwards is equivalent at
+        // each step of the move history
+        function checkEquivalence(moves: SquareIndexType[]) {
+            moves.forEach(async (_, step) => {
+                const resultFromMoveHistory = await simulateMoveHistory(moves, step);
+                const resultSteppingForwards = await simulateStepForward(moves, step);
                 expect(resultFromMoveHistory).toEqual(resultSteppingForwards);
-            }
-            moves.forEach((_, index) => checkEquivalenceAtStep(index));
+            });
         }
         checkEquivalence([0, 3, 1, 4, 2]);
         checkEquivalence([4, 5, 7, 8, 1]);
