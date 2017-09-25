@@ -193,28 +193,6 @@ describe("TicTacToe view model", () => {
         validate();
     });
 
-    it("moves back to empty board when move 0 is clicked", async () => {
-        const { clickSquare$, clickMove$, game$, stop$ } = setupTest();
-
-        function input() {
-            const moves = [0, 3, 1, 4, 2];
-            moves.forEach(square => clickSquare$.next(square));
-            clickMove$.next(0);
-            stop$.next();
-        }
-        setTimeout(input, 0);
-
-        const result = await game$.takeUntil(stop$).toPromise();
-
-        function validate() {
-            expect(result.currentBoard).toEqual(emptyBoard);
-            expect(result.winner).toBeUndefined();
-            expect(result.history).toEqual([emptyBoard]);
-            expect(result.nextPlayer).toBe("X");
-        }
-        validate();
-    });
-
     // Return a promise for the game state after processing `moves` up to `step`.
     function simulateStepForward(moves: SquareIndexType[], step: number) {
         const { clickSquare$, game$, stop$ } = setupTest();
