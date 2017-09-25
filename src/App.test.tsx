@@ -35,7 +35,7 @@ const emptyBoard = new Array(9).fill(undefined);
 
 describe("TicTacToe view model", () => {
     // Test with TestScheduler
-    it("starts with an empty board, no winner, and player 'X' next", () => {
+    it("starts with an empty board, no winner, and player 'X' next (using marbles)", () => {
         const testScheduler = new Rx.TestScheduler(deepEquals);
         const clickSquare$ = testScheduler.createHotObservable<SquareIndexType>("");
         const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
@@ -74,7 +74,7 @@ describe("TicTacToe view model", () => {
     });
 
     // Test using marble diagrams and TestScheduler.
-    it("places an 'X' on the first square clicked", () => {
+    it("places an 'X' on the first square clicked (using marbles)", () => {
         const testScheduler = new Rx.TestScheduler(deepEquals);
         const clickSquare$ = testScheduler.createHotObservable<SquareIndexType>("-5");
         const clickMove$ = testScheduler.createHotObservable<MoveIndexType>("");
@@ -152,7 +152,7 @@ describe("TicTacToe view model", () => {
         }
 
         for (let idx = 0; idx < 9; idx++) {
-            testFirstClick(idx as SquareIndexType);
+            await testFirstClick(idx);
         }
     });
 
@@ -232,25 +232,25 @@ describe("TicTacToe view model", () => {
         const { clickSquare$, clickMove$, game$, stop$ } = setupTest();
         function input() {
             moves.forEach(square => clickSquare$.next(square));
-            clickMove$.next(moves.length - 1);
+            clickMove$.next(step);
             stop$.next();
         }
         setTimeout(input, 0);
         return game$.takeUntil(stop$).toPromise();
     }
 
-    it("moves game state backward when a previous move is clicked", () => {
+    it("moves game state backward when a previous move is clicked", async () => {
         // Validate that the game state moving forwards or backwards is equivalent at
         // each step of the move history
-        function checkEquivalence(moves: SquareIndexType[]) {
-            moves.forEach(async (_, step) => {
+        async function checkEquivalence(moves: SquareIndexType[]) {
+            for (const step of moves) {
                 const resultFromMoveHistory = await simulateMoveHistory(moves, step);
                 const resultSteppingForwards = await simulateStepForward(moves, step);
                 expect(resultFromMoveHistory).toEqual(resultSteppingForwards);
-            });
+            }
         }
-        checkEquivalence([0, 3, 1, 4, 2]);
-        checkEquivalence([4, 5, 7, 8, 1]);
+        await checkEquivalence([0, 3, 1, 4, 2]);
+        await checkEquivalence([4, 5, 7, 8, 1]);
     });
 
     it("ignores clicks on already occupied squares", async () => {
@@ -275,10 +275,10 @@ describe("TicTacToe view model", () => {
             return game$.takeUntil(stop$).toPromise();
         }
 
-        Rx.Observable.range(0, 9).subscribe(async (n: SquareIndexType) => {
+        for (let n = 0; n < 9; n++) {
             let resultClickOnce = await clickOnce(n);
             let resultClickTwice = await clickTwice(n);
             expect(resultClickTwice).toEqual(resultClickOnce);
-        });
+        }
     });
 });
