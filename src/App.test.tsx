@@ -217,7 +217,7 @@ describe("TicTacToe view model", () => {
         return game$.takeUntil(stop$).toPromise();
     }
 
-    it("moves game state backward when a previous move is clicked", async () => {
+    it("moves game state backward when a previous move is clicked (promises)", async () => {
         // Validate that the game state moving forwards or backwards is equivalent at
         // each step of the move history
         async function checkEquivalence(moves: SquareIndexType[]) {
@@ -227,8 +227,13 @@ describe("TicTacToe view model", () => {
                 expect(resultFromMoveHistory).toEqual(resultSteppingForwards);
             }
         }
-        await checkEquivalence([0, 3, 1, 4, 2]);
-        await checkEquivalence([4, 5, 7, 8, 1]);
+
+        // Run these tests in parallel.
+        await Promise.all([
+            checkEquivalence([0, 3, 1, 4, 2]),
+            checkEquivalence([4, 5, 7, 8, 1]),
+            checkEquivalence([8, 4, 7, 2, 0, 1])
+        ]);
     });
 
     it("ignores clicks on already occupied squares", async () => {
