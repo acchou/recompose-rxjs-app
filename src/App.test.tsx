@@ -151,9 +151,11 @@ describe("TicTacToe view model", () => {
             validate();
         }
 
+        const promises = [];
         for (let idx = 0; idx < 9; idx++) {
-            await testFirstClick(idx);
+            promises[idx] = testFirstClick(idx);
         }
+        await Promise.all(promises);
     });
 
     it("detects a winner", async () => {
@@ -221,19 +223,21 @@ describe("TicTacToe view model", () => {
         // Validate that the game state moving forwards or backwards is equivalent at
         // each step of the move history
         async function checkEquivalence(moves: SquareIndexType[]) {
-            for (const step of moves) {
-                const resultFromMoveHistory = await simulateMoveHistory(moves, step);
-                const resultSteppingForwards = await simulateStepForward(moves, step);
-                expect(resultFromMoveHistory).toEqual(resultSteppingForwards);
+            for (let step = 0; step < moves.length + 1; step++) {
+                const backward = simulateMoveHistory(moves, step);
+                const forward = simulateStepForward(moves, step);
+                expect(await backward).toEqual(await forward);
             }
         }
 
         // Run these tests in parallel.
-        await Promise.all([
+        const tests = [
+            checkEquivalence([]),
             checkEquivalence([0, 3, 1, 4, 2]),
             checkEquivalence([4, 5, 7, 8, 1]),
             checkEquivalence([8, 4, 7, 2, 0, 1])
-        ]);
+        ];
+        await Promise.all(tests);
     });
 
     it("ignores clicks on already occupied squares", async () => {
@@ -259,9 +263,9 @@ describe("TicTacToe view model", () => {
         }
 
         for (let n = 0; n < 9; n++) {
-            let resultClickOnce = await clickOnce(n);
-            let resultClickTwice = await clickTwice(n);
-            expect(resultClickTwice).toEqual(resultClickOnce);
+            let resultClickOnce = clickOnce(n);
+            let resultClickTwice = clickTwice(n);
+            expect(await resultClickTwice).toEqual(await resultClickOnce);
         }
     });
 });
