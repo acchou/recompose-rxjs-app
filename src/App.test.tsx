@@ -4,7 +4,14 @@ import * as Rx from "rxjs";
 import * as Recompose from "recompose";
 import rxjsConfig from "recompose/rxjsObservableConfig";
 import App from "./App";
-import { MoveIndexType, SquareIndexType, GameViewModel } from "./TicTacToeViewModel";
+import {
+    MoveIndexType,
+    SquareIndexType,
+    GameViewModel,
+    clickSquare,
+    clickMoveReducer,
+    calculateWinner
+} from "./TicTacToeViewModel";
 
 it("renders without crashing", () => {
     const div = document.createElement("div");
@@ -32,6 +39,95 @@ function setupTest() {
 }
 
 const emptyBoard = new Array(9).fill(undefined);
+const squares = emptyBoard.map((_, i) => i);
+
+describe("Unit tests for TicTacToe reducers", () => {
+    describe("clickSquare()", () => {
+        it("modifies the board to indicate a click on the square", () => {
+            squares.forEach(square => {
+                const board = clickSquare(emptyBoard, "X", square);
+                board.forEach((content, idx) => {
+                    if (idx === square) {
+                        expect(content).toEqual("X");
+                    } else {
+                        expect(content).toBeUndefined();
+                    }
+                });
+            });
+        });
+
+        it("returns the same board if there's already a winner", () => {
+            const board = emptyBoard.slice();
+            board[0] = board[1] = board[2] = "X";
+            squares.forEach(square => {
+                expect(clickSquare(board, "O", square)).toBe(board);
+                expect(clickSquare(board, "X", square)).toBe(board);
+            });
+        });
+    });
+
+    describe("clickMoveReducer()", () => {
+        it("does nothing when the clicked move is the current move", () => {
+            let emptyHistory = [emptyBoard];
+            let board = emptyBoard.slice();
+            board[0] = "X";
+            let oneMove = [...emptyHistory, board];
+
+            expect(clickMoveReducer(emptyHistory, emptyHistory.length)).toEqual(emptyHistory);
+            expect(clickMoveReducer(oneMove, oneMove.length)).toEqual(oneMove);
+        });
+
+        it("returns to an empty history if the 0th move is clicked", () => {
+            let emptyHistory = [emptyBoard];
+            let board = emptyBoard.slice();
+            board[0] = "X";
+            let oneMove = [...emptyHistory, board];
+
+            expect(clickMoveReducer(oneMove, 0)).toEqual(emptyHistory);
+        });
+    });
+
+    describe("winner detector", () => {
+        it("detects horizontal winners", () => {
+            ["X", "O"].forEach(player => {
+                [0, 1, 2].forEach(row => {
+                    const board = emptyBoard.slice();
+                    board[3 * row + 0] = board[3 * row + 1] = board[3 * row + 2] = player;
+                    expect(calculateWinner(board)).toEqual(player);
+                });
+            });
+        });
+
+        it("detects vertical winners", () => {
+            ["X", "O"].forEach(player => {
+                [0, 1, 2].forEach(column => {
+                    const board = emptyBoard.slice();
+                    board[column] = board[3 + column] = board[6 + column] = player;
+                    expect(calculateWinner(board)).toEqual(player);
+                });
+            });
+        });
+
+        it("detects diagonal winners", () => {
+            ["X", "O"].forEach(player => {
+                let board = emptyBoard.slice();
+                board[0] = board[4] = board[8] = player;
+                expect(calculateWinner(board)).toEqual(player);
+
+                board = emptyBoard.slice();
+                board[2] = board[4] = board[6] = player;
+                expect(calculateWinner(board)).toEqual(player);
+            });
+        });
+
+        it("detects when there is no winner", () => {
+            expect(calculateWinner(emptyBoard)).toBeUndefined();
+            const board = emptyBoard.slice();
+            board[0] = board[1] = "X";
+            expect(calculateWinner(board)).toBeUndefined();
+        });
+    });
+});
 
 describe("TicTacToe view model", () => {
     // Test with TestScheduler

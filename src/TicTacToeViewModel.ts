@@ -1,6 +1,7 @@
 import * as Rx from "rxjs/Rx";
 
-export type SquareValueType = "X" | "O" | undefined;
+export type Player = "X" | "O";
+export type SquareValueType = Player | undefined;
 export type BoardType = SquareValueType[];
 export type HistoryType = BoardType[];
 export type SquareIndexType = number;
@@ -15,7 +16,7 @@ export interface GameState {
     history: HistoryType;
     currentBoard: BoardType;
     winner: SquareValueType;
-    nextPlayer: "X" | "O";
+    nextPlayer: Player;
 }
 
 export type GameViewModelOutputs = Rx.Observable<GameState>;
@@ -24,7 +25,7 @@ function nextMovePlayer(history: HistoryType) {
     return history.length % 2 === 1 ? "X" : "O";
 }
 
-function calculateWinner(board: SquareValueType[]) {
+export function calculateWinner(board: SquareValueType[]) {
     const lines = [
         [0, 1, 2],
         [3, 4, 5],
@@ -45,34 +46,50 @@ function calculateWinner(board: SquareValueType[]) {
     return undefined;
 }
 
+export function clickSquare(
+    board: BoardType,
+    nextPlayer: Player,
+    square: SquareIndexType
+): BoardType {
+    if (board[square] || calculateWinner(board)) {
+        return board;
+    }
+    const newBoard = board.slice();
+    newBoard[square] = nextPlayer;
+    return newBoard;
+}
+
+export function clickMoveReducer(history: HistoryType, move: number): HistoryType {
+    return history.slice(0, move + 1);
+}
+
+export function clickSquareReducer(history: HistoryType, square: number): HistoryType {
+    const board = history[history.length - 1];
+    const newBoard = clickSquare(board, nextMovePlayer(history), square);
+    if (newBoard === board) {
+        return history;
+    }
+    return [...history, newBoard];
+}
+
 export function GameViewModel(input: GameViewModelInputs): GameViewModelOutputs {
     const { clickSquare$, clickMove$ } = input;
 
     function makeClickSquareReducer(squareNum: SquareIndexType) {
-        return function(history: HistoryType): HistoryType {
-            const board = history[history.length - 1];
-            if (board[squareNum] || calculateWinner(board)) {
-                return history;
-            }
-            const newBoard = board.slice();
-            newBoard[squareNum] = nextMovePlayer(history);
-            return [...history, newBoard];
-        };
+        return (history: HistoryType) => clickSquareReducer(history, squareNum);
     }
 
     function makeClickMoveReducer(move: MoveIndexType) {
-        return function(history: HistoryType): HistoryType {
-            return history.slice(0, move + 1);
-        };
+        return (history: HistoryType) => clickMoveReducer(history, move);
     }
 
-    const clickSquareReducer = clickSquare$.map(makeClickSquareReducer);
-    const clickMoveReducer = clickMove$.map(makeClickMoveReducer);
+    const clickSquareReducer$ = clickSquare$.map(makeClickSquareReducer);
+    const clickMoveReducer$ = clickMove$.map(makeClickMoveReducer);
     const initialState = [new Array(9).fill(undefined)] as HistoryType;
     const initialReducer = (x: HistoryType) => x;
 
     const history$ = Rx.Observable
-        .merge(clickSquareReducer, clickMoveReducer)
+        .merge(clickSquareReducer$, clickMoveReducer$)
         .startWith(initialReducer)
         .scan((history, reducer) => reducer(history), initialState);
 
